@@ -7,13 +7,11 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // Menampilkan halaman login
     public function form()
     {
         return view('auth.login');
     }
 
-    // Proses login
     public function login(Request $request)
     {
         $request->validate([
@@ -24,11 +22,7 @@ class AuthController extends Controller
         if (Auth::attempt($request->only('email', 'password'))) {
             $request->session()->regenerate();
 
-            if (auth()->user()->role == 'admin') {
-                return view('dashboard');
-            } elseif (auth()->user()->role == 'petugas') {
-                return view('welcome');
-            }
+            return redirect()->route('dashboard');
         }
 
         return back()->withErrors([
@@ -36,7 +30,6 @@ class AuthController extends Controller
         ])->withInput();
     }
 
-    // Logout
     public function logout(Request $request)
     {
         Auth::logout();
