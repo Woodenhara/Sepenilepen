@@ -14,16 +14,16 @@ class Penjualan extends Model
     protected $fillable = [
         'TanggalPenjualan',
         'TotalHarga',
-        'PelangganID',
+        'id_pelanggan',
     ];
 
     public function pelanggan()
     {
-        return $this->belongsTo(Pelanggan::class, 'id_pelanggan');
+        return $this->belongsTo(Pelanggan::class, 'id_pelanggan', 'id');
     }
 
     public function details()
     {
-        return $this->hasMany(DetailPenjualan::class, 'id_penjualan');
+        return $this->hasMany(DetailPenjualan::class, 'id_penjualan', 'id');
     }
 }
