@@ -48,8 +48,9 @@
                                 <option value="{{ $produk->id }}"
                                     data-harga="{{ $produk->Harga }}"
                                     data-stok="{{ $produk->Stok }}"
-                                    {{ $detail->id_produk == $produk->id ? 'selected' : '' }}>
-                                    {{ $produk->NamaProduk }} (Stok: {{ $produk->Stok }})
+                                    {{ $detail->id_produk == $produk->id ? 'selected' : '' }}
+                                    @if($produk->Stok == 0) disabled @endif>
+                                    {{ $produk->NamaProduk }} @if($produk->Stok == 0) (Stok Habis) @else (Stok: {{ $produk->Stok }}) @endif
                                 </option>
                             @endforeach
                         </select>
@@ -62,6 +63,9 @@
                         <label for="Subtotal">Subtotal</label>
                         <input type="text" class="form-control subtotal" readonly
                             value="{{ $detail->SubTotal }}">
+                        <label for="Pajak">Pajak (11%)</label>
+                        <input type="text" class="form-control pajak" readonly
+                            value="{{ number_format($detail->SubTotal * 0.11, 2) }}">
                     </div>
                     @endforeach
                 </div>
@@ -73,6 +77,11 @@
                     <input type="text" id="total-harga" class="form-control" readonly
                         value="{{ $penjualan->TotalHarga }}">
                 </div>
+                <div class="form-group mt-3">
+                    <label for="TotalPajak">Total Pajak</label>
+                    <input type="text" id="total-pajak" class="form-control" readonly
+                        value="{{ number_format($penjualan->details->sum(fn($detail) => $detail->SubTotal * 0.11), 2) }}">
+                </div>
 
                 <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
                 <a href="{{ url()->previous() }}" class="btn btn-secondary">Kembali</a>
@@ -83,7 +92,7 @@
 
 @push('scripts')
 <script>
-    let produkIndex = 1;
+    let produkIndex = {{ count($penjualan->details) }}; // Start from the current number of details
 
     document.getElementById('add-produk').addEventListener('click', () => {
         const wrapper = document.getElementById('produk-wrapper');
@@ -93,8 +102,9 @@
                 <select name="produk[${produkIndex}][id_produk]" class="form-control produk-select" onchange="updateHarga(this)">
                     <option value="" disabled selected>Pilih Produk</option>
                     @foreach ($produks as $produk)
-                        <option value="{{ $produk->id }}" data-harga="{{ $produk->Harga }}">
-                            {{ $produk->NamaProduk }}
+                        <option value="{{ $produk->id }}" data-harga="{{ $produk->Harga }}" data-stok="{{ $produk->Stok }}"
+                            @if($produk->Stok == 0) disabled @endif>
+                            {{ $produk->NamaProduk }} @if($produk->Stok == 0) (Stok Habis) @else (Stok: {{ $produk->Stok }}) @endif
                         </option>
                     @endforeach
                 </select>
@@ -105,6 +115,8 @@
                 <input type="text" class="form-control harga-sementara" readonly>
                 <label for="Subtotal">Subtotal</label>
                 <input type="text" class="form-control subtotal" readonly>
+                <label for="Pajak">Pajak (11%)</label>
+                <input type="text" class="form-control pajak" readonly>
             </div>
         `;
         wrapper.insertAdjacentHTML('beforeend', newProduk);
@@ -131,22 +143,33 @@
         const row = jumlahInput.closest('.produk-row');
         const hargaSementaraInput = row.querySelector('.harga-sementara').value || 0;
         const subtotalInput = row.querySelector('.subtotal');
+        const pajakInput = row.querySelector('.pajak');
 
         const subtotal = hargaSementaraInput * jumlahInput.value;
         subtotalInput.value = subtotal;
+
+        const pajak = subtotal * 0.11;
+        pajakInput.value = pajak.toFixed(2);
 
         updateTotalHarga();
     }
 
     function updateTotalHarga() {
         const subtotalInputs = document.querySelectorAll('.subtotal');
+        const pajakInputs = document.querySelectorAll('.pajak');
         let totalHarga = 0;
+        let totalPajak = 0;
 
         subtotalInputs.forEach(input => {
             totalHarga += parseFloat(input.value) || 0;
         });
 
-        document.getElementById('total-harga').value = totalHarga;
+        pajakInputs.forEach(input => {
+            totalPajak += parseFloat(input.value) || 0;
+        });
+
+        document.getElementById('total-harga').value = totalHarga.toFixed(2);
+        document.getElementById('total-pajak').value = totalPajak.toFixed(2);
     }
 </script>
 @endpush

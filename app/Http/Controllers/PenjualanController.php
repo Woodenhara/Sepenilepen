@@ -40,6 +40,14 @@ class PenjualanController extends Controller
             'produk.*.JumlahProduk' => 'required|integer|min:1',
         ]);
 
+        foreach ($request->produk as $produkData) {
+            $produk = Produk::findOrFail($produkData['id_produk']);
+
+            if ($produk->Stok < $produkData['JumlahProduk']) {
+                return redirect()->back()->with('error', "Stok produk {$produk->NamaProduk} tidak mencukupi!")->withInput();
+            }
+        }
+
         $pelanggan = Pelanggan::create([
             'NamaPelanggan' => $request->NamaPelanggan,
             'Alamat' => $request->Alamat,
@@ -53,10 +61,12 @@ class PenjualanController extends Controller
         ]);
 
         $totalHarga = 0;
+        $totalPajak = 0;
 
         foreach ($request->produk as $produkData) {
             $produk = Produk::findOrFail($produkData['id_produk']);
             $subtotal = $produk->Harga * $produkData['JumlahProduk'];
+            $pajak = $subtotal * 0.11;
 
             DetailPenjualan::create([
                 'id_penjualan' => $penjualan->id,
@@ -66,11 +76,12 @@ class PenjualanController extends Controller
             ]);
 
             $totalHarga += $subtotal;
+            $totalPajak += $pajak;
 
             $produk->update(['Stok' => $produk->Stok - $produkData['JumlahProduk']]);
         }
 
-        $penjualan->update(['TotalHarga' => $totalHarga]);
+        $penjualan->update(['TotalHarga' => $totalHarga + $totalPajak]);
 
         return redirect()->route('penjualan.index')->with('success', 'Transaksi berhasil ditambahkan.');
     }
@@ -116,9 +127,17 @@ class PenjualanController extends Controller
         }
 
         $totalHarga = 0;
+        $totalPajak = 0;
+
         foreach ($request->produk as $produkData) {
             $produk = Produk::findOrFail($produkData['id_produk']);
+
+            if ($produk->Stok < $produkData['JumlahProduk']) {
+                return redirect()->back()->with('error', "Stok produk {$produk->NamaProduk} tidak mencukupi!")->withInput();
+            }
+
             $subtotal = $produk->Harga * $produkData['JumlahProduk'];
+            $pajak = $subtotal * 0.11;
 
             DetailPenjualan::create([
                 'id_penjualan' => $penjualan->id,
@@ -128,25 +147,35 @@ class PenjualanController extends Controller
             ]);
 
             $totalHarga += $subtotal;
+            $totalPajak += $pajak;
 
             $produk->update(['Stok' => $produk->Stok - $produkData['JumlahProduk']]);
         }
 
         $penjualan->update([
             'TanggalPenjualan' => $request->TanggalPenjualan,
-            'TotalHarga' => $totalHarga,
+            'TotalHarga' => $totalHarga + $totalPajak,
         ]);
 
         return redirect()->route('penjualan.index')->with('success', 'Transaksi berhasil diperbarui.');
     }
 
-
     public function destroy(Penjualan $penjualan)
     {
         $this->authorize('delete', $penjualan);
+
+        $penjualan->details()->delete();
+
+        $pelanggan = $penjualan->pelanggan;
+        if ($pelanggan->penjualans()->count() == 1) {
+            $pelanggan->delete();
+        }
+
         $penjualan->delete();
+
         return redirect()->route('penjualan.index')->with('success', 'Transaksi berhasil dihapus.');
     }
+
 
     public function dashboard()
     {
