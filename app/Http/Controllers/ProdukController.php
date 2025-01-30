@@ -10,10 +10,18 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class ProdukController extends Controller
 {
     use AuthorizesRequests;
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Produk::class);
-        $produks = Produk::all();
+
+        $query = Produk::query();
+
+        if ($request->has('search') && $request->search != '') {
+            $query->where('NamaProduk', 'like', '%' . $request->search . '%');
+        }
+
+        $produks = $query->get();
+
         return view('produk.index', compact('produks'));
     }
 
